@@ -6,7 +6,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { ArrowUpRight, ArrowDownRight, Receipt, Search, Filter, Download, Calendar, Activity } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { History, Search, Filter, Download, ArrowUpRight, ArrowDownRight, Receipt, TrendingUp } from "lucide-react"
 import { apiClient } from "@/lib/api"
 
 interface Transaction {
@@ -14,99 +24,121 @@ interface Transaction {
   type: "topup" | "bill_payment" | "transfer_sent" | "transfer_received"
   amount: number
   description: string
-  status: "completed" | "pending" | "failed"
+  created_at: string
   reference?: string
   recipient?: string
   biller?: string
-  created_at: string
+  status: "completed" | "pending" | "failed"
+}
+
+interface TransactionFilters {
+  search?: string
+  type?: string
+  status?: string
+  date_from?: string
+  date_to?: string
+  page?: number
+  limit?: number
 }
 
 export default function HistoryPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [typeFilter, setTypeFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [pagination, setPagination] = useState({
-    total: 0,
-    limit: 20,
-    offset: 0,
-    has_more: false,
+  const [filters, setFilters] = useState<TransactionFilters>({
+    page: 1,
+    limit: 10,
   })
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalTransactions, setTotalTransactions] = useState(0)
 
   useEffect(() => {
     fetchTransactions()
-  }, [typeFilter, statusFilter, searchTerm])
+  }, [filters])
 
-  const fetchTransactions = async (offset = 0) => {
+  const fetchTransactions = async () => {
     try {
       setLoading(true)
-      const response = await apiClient.getTransactionHistory({
-        type: typeFilter === "all" ? undefined : typeFilter,
-        status: statusFilter === "all" ? undefined : statusFilter,
-        search: searchTerm || undefined,
-        limit: pagination.limit,
-        offset,
-      })
+      const response = await apiClient.getTransactionHistory(filters)
 
-      if (response.success) {
-        if (offset === 0) {
-          setTransactions(response.transactions || [])
-        } else {
-          setTransactions((prev) => [...prev, ...(response.transactions || [])])
-        }
-
-        setPagination(
-          response.pagination || {
-            total: response.transactions?.length || 0,
-            limit: pagination.limit,
-            offset,
-            has_more: false,
+      if (response.success && response.transactions) {
+        setTransactions(response.transactions)
+        setTotalPages(response.pagination?.total_pages || 1)
+        setTotalTransactions(response.pagination?.total || 0)
+      } else {
+        // Fallback to mock data if API fails
+        const mockTransactions: Transaction[] = [
+          {
+            id: 1,
+            type: "topup",
+            amount: 500.0,
+            description: "Account Top-up",
+            created_at: "2024-01-15T10:30:00Z",
+            reference: "TXN001",
+            status: "completed",
           },
-        )
+          {
+            id: 2,
+            type: "bill_payment",
+            amount: -85.5,
+            description: "Electricity Bill",
+            created_at: "2024-01-14T14:20:00Z",
+            reference: "BILL002",
+            biller: "Electric Company",
+            status: "completed",
+          },
+          {
+            id: 3,
+            type: "transfer_sent",
+            amount: -100.0,
+            description: "Transfer to John Doe",
+            created_at: "2024-01-13T09:15:00Z",
+            reference: "TXN003",
+            recipient: "john.doe@email.com",
+            status: "completed",
+          },
+          {
+            id: 4,
+            type: "transfer_received",
+            amount: 75.0,
+            description: "Transfer from Jane Smith",
+            created_at: "2024-01-12T16:45:00Z",
+            reference: "TXN004",
+            recipient: "jane.smith@email.com",
+            status: "completed",
+          },
+          {
+            id: 5,
+            type: "bill_payment",
+            amount: -45.0,
+            description: "Internet Bill",
+            created_at: "2024-01-11T11:30:00Z",
+            reference: "BILL005",
+            biller: "Internet Provider",
+            status: "pending",
+          },
+        ]
+        setTransactions(mockTransactions)
+        setTotalPages(1)
+        setTotalTransactions(mockTransactions.length)
       }
     } catch (error) {
       console.error("Error fetching transactions:", error)
-      // Fallback to mock data
-      const mockTransactions: Transaction[] = [
-        {
-          id: 1,
-          type: "topup",
-          amount: 500.0,
-          description: "Account Top-up",
-          status: "completed",
-          reference: "TXN001",
-          created_at: "2024-01-15T10:30:00Z",
-        },
-        {
-          id: 2,
-          type: "bill_payment",
-          amount: -85.5,
-          description: "Electricity Bill Payment",
-          status: "completed",
-          reference: "TXN002",
-          biller: "Electricity Company",
-          created_at: "2024-01-14T14:20:00Z",
-        },
-        {
-          id: 3,
-          type: "transfer_sent",
-          amount: -100.0,
-          description: "Transfer to John Doe",
-          status: "completed",
-          reference: "TXN003",
-          recipient: "John Doe",
-          created_at: "2024-01-13T09:15:00Z",
-        },
-      ]
-      setTransactions(mockTransactions)
+      setTransactions([])
     } finally {
       setLoading(false)
     }
   }
 
-  const loadMore = () => {
-    fetchTransactions(pagination.offset + pagination.limit)
+  const handleFilterChange = (key: keyof TransactionFilters, value: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value || undefined,
+      page: 1, // Reset to first page when filters change
+    }))
+  }
+
+  const handlePageChange = (page: number) => {
+    setFilters((prev) => ({ ...prev, page }))
   }
 
   const getTransactionIcon = (type: string) => {
@@ -114,13 +146,13 @@ export default function HistoryPage() {
       case "topup":
         return <ArrowUpRight className="h-4 w-4 text-green-600" />
       case "bill_payment":
-        return <Receipt className="h-4 w-4 text-orange-600" />
+        return <Receipt className="h-4 w-4 text-red-600" />
       case "transfer_sent":
         return <ArrowDownRight className="h-4 w-4 text-red-600" />
       case "transfer_received":
         return <ArrowUpRight className="h-4 w-4 text-green-600" />
       default:
-        return <Activity className="h-4 w-4" />
+        return <TrendingUp className="h-4 w-4" />
     }
   }
 
@@ -146,7 +178,7 @@ export default function HistoryPage() {
   const getTransactionTypeLabel = (type: string) => {
     switch (type) {
       case "topup":
-        return "Top-up"
+        return "Top Up"
       case "bill_payment":
         return "Bill Payment"
       case "transfer_sent":
@@ -160,15 +192,10 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Transaction History</h1>
-          <p className="text-gray-600 mt-2">View and manage your transaction history</p>
-        </div>
-        <Button variant="outline" className="mt-4 sm:mt-0 bg-transparent">
-          <Download className="h-4 w-4 mr-2" />
-          Export
-        </Button>
+      {/* Header */}
+      <div className="text-center sm:text-left">
+        <h1 className="text-3xl font-bold text-gray-900">Transaction History</h1>
+        <p className="text-gray-600 mt-2">View and manage your transaction history</p>
       </div>
 
       {/* Filters */}
@@ -178,28 +205,31 @@ export default function HistoryPage() {
             <Filter className="h-5 w-5 mr-2" />
             Filters
           </CardTitle>
+          <CardDescription>Filter transactions by type, status, or date range</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search transactions..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+            <div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search transactions..."
+                  value={filters.search || ""}
+                  onChange={(e) => handleFilterChange("search", e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
 
             {/* Type Filter */}
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={filters.type || "all"} onValueChange={(value) => handleFilterChange("type", value)}>
               <SelectTrigger>
-                <SelectValue placeholder="All types" />
+                <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                <SelectItem value="topup">Top-up</SelectItem>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="topup">Top Up</SelectItem>
                 <SelectItem value="bill_payment">Bill Payment</SelectItem>
                 <SelectItem value="transfer_sent">Transfer Sent</SelectItem>
                 <SelectItem value="transfer_received">Transfer Received</SelectItem>
@@ -207,96 +237,151 @@ export default function HistoryPage() {
             </Select>
 
             {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={filters.status || "all"} onValueChange={(value) => handleFilterChange("status", value)}>
               <SelectTrigger>
-                <SelectValue placeholder="All statuses" />
+                <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Export Button */}
+            <Button variant="outline" className="w-full bg-transparent">
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Transactions List */}
+      {/* Transactions Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Transactions</CardTitle>
-          <CardDescription>
-            {pagination.total > 0
-              ? `Showing ${transactions.length} of ${pagination.total} transactions`
-              : "No transactions found"}
-          </CardDescription>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center">
+              <History className="h-5 w-5 mr-2" />
+              Transactions ({totalTransactions})
+            </div>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {loading && transactions.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading transactions...</p>
-              </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">Loading transactions...</span>
             </div>
           ) : transactions.length === 0 ? (
-            <div className="text-center py-12">
-              <Activity className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500">No transactions found</p>
-              <p className="text-sm text-gray-400 mt-1">Try adjusting your filters or make your first transaction</p>
+            <div className="text-center py-8 text-gray-500">
+              <History className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+              <p>No transactions found.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {transactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 rounded-full bg-gray-100">{getTransactionIcon(transaction.type)}</div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <p className="font-medium text-gray-900">{transaction.description}</p>
-                        {getStatusBadge(transaction.status)}
-                      </div>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-                        <span className="flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {new Date(transaction.created_at).toLocaleDateString()}
-                        </span>
-                        <span>{getTransactionTypeLabel(transaction.type)}</span>
-                        {transaction.reference && <span className="font-mono">{transaction.reference}</span>}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`font-semibold ${transaction.amount > 0 ? "text-green-600" : "text-red-600"}`}>
-                      {formatAmount(transaction.amount)}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {new Date(transaction.created_at).toLocaleTimeString()}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Reference</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            {getTransactionIcon(transaction.type)}
+                            <span className="text-sm font-medium">{getTransactionTypeLabel(transaction.type)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{transaction.description}</p>
+                            {transaction.recipient && (
+                              <p className="text-xs text-gray-500">To: {transaction.recipient}</p>
+                            )}
+                            {transaction.biller && (
+                              <p className="text-xs text-gray-500">Biller: {transaction.biller}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`font-semibold ${transaction.amount > 0 ? "text-green-600" : "text-red-600"}`}
+                          >
+                            {formatAmount(transaction.amount)}
+                          </span>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(transaction.status)}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <p>{new Date(transaction.created_at).toLocaleDateString()}</p>
+                            <p className="text-gray-500">{new Date(transaction.created_at).toLocaleTimeString()}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-mono text-gray-500">{transaction.reference || "N/A"}</span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
-              {/* Load More Button */}
-              {pagination.has_more && (
-                <div className="text-center pt-6">
-                  <Button onClick={loadMore} variant="outline" disabled={loading}>
-                    {loading ? (
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                        Loading...
-                      </div>
-                    ) : (
-                      "Load More"
-                    )}
-                  </Button>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-6">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => handlePageChange(Math.max(1, (filters.page || 1) - 1))}
+                          className={(filters.page || 1) <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const page = i + 1
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => handlePageChange(page)}
+                              isActive={page === (filters.page || 1)}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        )
+                      })}
+
+                      {totalPages > 5 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => handlePageChange(Math.min(totalPages, (filters.page || 1) + 1))}
+                          className={
+                            (filters.page || 1) >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"
+                          }
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
                 </div>
               )}
-            </div>
+            </>
           )}
         </CardContent>
       </Card>

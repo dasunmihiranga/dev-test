@@ -123,7 +123,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen flex overflow-hidden bg-gray-50">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -133,12 +133,12 @@ export default function DashboardLayout({
       <div
         className={`
           fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out
-          lg:translate-x-0 lg:static lg:inset-0
+          lg:translate-x-0 lg:static lg:inset-0 lg:flex lg:flex-col
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 bg-white">
+        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 bg-white flex-shrink-0">
           <div className="flex items-center space-x-2">
             <Wallet className="h-8 w-8 text-blue-600" />
             <h1 className="text-xl font-bold text-gray-900">Digital Wallet</h1>
@@ -154,7 +154,7 @@ export default function DashboardLayout({
         </div>
 
         {/* Balance Card */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex-shrink-0">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
             <p className="text-sm opacity-90">Current Balance</p>
             <p className="text-2xl font-bold">${user.balance.toFixed(2)}</p>
@@ -162,7 +162,7 @@ export default function DashboardLayout({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-2">
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -187,7 +187,7 @@ export default function DashboardLayout({
         </nav>
 
         {/* User Profile Section */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 flex-shrink-0">
           <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50">
             <Avatar className="h-10 w-10">
               <AvatarImage src="/placeholder.svg" alt={user.name} />
@@ -201,10 +201,10 @@ export default function DashboardLayout({
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="lg:pl-64">
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+        <div className="bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
             {/* Mobile menu button */}
             <Button
@@ -273,8 +273,10 @@ export default function DashboardLayout({
         </div>
 
         {/* Page content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">{children}</div>
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="p-4 sm:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto">{children}</div>
+          </div>
         </main>
       </div>
     </div>

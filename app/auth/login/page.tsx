@@ -5,12 +5,12 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Mail, Lock, Wallet } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, Wallet, AlertCircle } from "lucide-react"
 import { apiClient } from "@/lib/api"
 
 export default function LoginPage() {
@@ -23,22 +23,36 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setError("")
 
+    if (!email || !password) {
+      setError("Please fill in all fields")
+      return
+    }
+
     try {
+      setLoading(true)
       const response = await apiClient.login({ email, password })
 
-      if (response.success) {
+      if (response.success && response.token && response.user) {
         // Store token and user data
         localStorage.setItem("token", response.token)
         localStorage.setItem("user", JSON.stringify(response.user))
 
         // Redirect to dashboard
         router.push("/dashboard")
+      } else {
+        setError(response.message || "Login failed. Please try again.")
       }
-    } catch (err: any) {
-      setError(err.message || "Login failed. Please try again.")
+    } catch (error: any) {
+      console.error("Login error:", error)
+      if (error.status === 401) {
+        setError("Invalid email or password")
+      } else if (error.status === 422) {
+        setError("Please check your email and password")
+      } else {
+        setError("An error occurred. Please try again.")
+      }
     } finally {
       setLoading(false)
     }
@@ -47,10 +61,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo/Header */}
+        {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="p-3 bg-blue-600 rounded-full">
+            <div className="bg-blue-600 p-3 rounded-full">
               <Wallet className="h-8 w-8 text-white" />
             </div>
           </div>
@@ -58,23 +72,25 @@ export default function LoginPage() {
           <p className="text-gray-600 mt-2">Sign in to your account</p>
         </div>
 
-        <Card className="shadow-xl">
-          <CardHeader>
-            <CardTitle>Welcome Back</CardTitle>
-            <CardDescription>Enter your credentials to access your account</CardDescription>
+        {/* Login Form */}
+        <Card className="shadow-xl border-0">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
+            <CardDescription className="text-center">Enter your credentials to access your wallet</CardDescription>
           </CardHeader>
           <CardContent>
             {error && (
               <Alert className="mb-6 border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
                 <AlertDescription className="text-red-800">{error}</AlertDescription>
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Email */}
-              <div>
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative mt-1">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Email Field */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="email"
@@ -88,10 +104,10 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Password */}
-              <div>
+              {/* Password Field */}
+              <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <div className="relative mt-1">
+                <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="password"
@@ -102,18 +118,24 @@ export default function LoginPage() {
                     className="pl-10 pr-10"
                     required
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-400" />
+                    )}
+                  </Button>
                 </div>
               </div>
 
               {/* Submit Button */}
-              <Button type="submit" className="w-full h-12 text-base bg-blue-600 hover:bg-blue-700" disabled={loading}>
+              <Button type="submit" className="w-full h-11" disabled={loading}>
                 {loading ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -125,11 +147,11 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Register Link */}
-            <div className="text-center mt-6">
+            {/* Sign Up Link */}
+            <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Don't have an account?{" "}
-                <Link href="/auth/register" className="text-blue-600 hover:text-blue-700 font-medium">
+                <Link href="/auth/register" className="font-medium text-blue-600 hover:text-blue-500">
                   Sign up
                 </Link>
               </p>
@@ -138,8 +160,8 @@ export default function LoginPage() {
         </Card>
 
         {/* Footer */}
-        <div className="text-center mt-8 text-sm text-gray-500">
-          <p>&copy; 2024 Digital Wallet. All rights reserved.</p>
+        <div className="mt-8 text-center text-sm text-gray-500">
+          <p>© 2024 Digital Wallet. All rights reserved.</p>
         </div>
       </div>
     </div>
