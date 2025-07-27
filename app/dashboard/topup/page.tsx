@@ -49,7 +49,7 @@ export default function TopUpPage() {
 
     try {
       setLoading(true)
-      const response = await apiClient.topUpAccount({
+      const response = await apiClient.topUp({
         amount: numAmount,
         payment_method: paymentMethod,
       })

@@ -57,10 +57,20 @@ export default function TransferPage() {
 
     try {
       setLoading(true)
+      
+      // First, search for the recipient by email to get their ID
+      const searchResponse = await apiClient.searchUser(recipientEmail)
+      
+      if (!searchResponse.success || !searchResponse.user) {
+        setError("Recipient not found. Please check the email address.")
+        return
+      }
+
+      // Now transfer funds using the recipient ID
       const response = await apiClient.transferFunds({
-        recipient_email: recipientEmail,
+        recipient_id: searchResponse.user.id,
         amount: numAmount,
-        description: description || undefined,
+        note: description || undefined,
       })
 
       if (response.success) {
