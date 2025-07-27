@@ -2,12 +2,19 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 
+interface ApiError {
+  status: number
+  message: string
+  errors?: Record<string, string[]>
+  success: false
+}
+
 class ApiClient {
   private getAuthHeaders() {
     const token = localStorage.getItem("token")
     return {
       "Content-Type": "application/json",
-      "Accept": "application/json",
+      Accept: "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
     }
   }
@@ -30,14 +37,14 @@ class ApiClient {
             status: response.status,
             message: data.message || "Validation failed",
             errors: data.errors,
-            success: false
-          }
+            success: false,
+          } as ApiError
         }
         throw {
           status: response.status,
           message: data.message || `HTTP error! status: ${response.status}`,
-          success: false
-        }
+          success: false,
+        } as ApiError
       }
 
       return data
@@ -68,6 +75,7 @@ class ApiClient {
     })
     // Clear token from localStorage on successful logout
     localStorage.removeItem("token")
+    localStorage.removeItem("user")
     return result
   }
 
@@ -111,12 +119,12 @@ class ApiClient {
     })
   }
 
-  async getTransactionHistory(filters?: { 
-    type?: string; 
-    status?: string; 
-    search?: string;
-    limit?: number;
-    offset?: number;
+  async getTransactionHistory(filters?: {
+    type?: string
+    status?: string
+    search?: string
+    limit?: number
+    offset?: number
   }) {
     const params = new URLSearchParams()
     if (filters?.type) params.append("type", filters.type)
@@ -148,7 +156,7 @@ class ApiClient {
   }
 
   // Activity endpoints
-  async getActivities(page: number = 1) {
+  async getActivities(page = 1) {
     return this.request(`/activities?page=${page}`)
   }
 

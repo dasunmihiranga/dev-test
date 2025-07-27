@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
+import { apiClient } from "@/lib/api"
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -35,27 +36,24 @@ export default function RegisterPage() {
     }
 
     try {
-      // Simulate API call to Laravel backend
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
+      const response = await apiClient.register(formData)
 
-      if (response.ok) {
-        const data = await response.json()
-        // Store token in localStorage or cookies
-        localStorage.setItem("token", data.token)
-        localStorage.setItem("user", JSON.stringify(data.user))
+      if (response.success) {
+        // Store token and user data
+        localStorage.setItem("token", response.token)
+        localStorage.setItem("user", JSON.stringify(response.user))
         router.push("/dashboard")
       } else {
-        const errorData = await response.json()
-        setError(errorData.message || "Registration failed")
+        setError(response.message || "Registration failed")
       }
-    } catch (err) {
-      setError("Network error. Please try again.")
+    } catch (err: any) {
+      if (err.status === 422 && err.errors) {
+        // Handle validation errors - show the first error
+        const firstError = Object.values(err.errors)[0] as string[]
+        setError(firstError[0] || "Validation failed")
+      } else {
+        setError(err.message || "Network error. Please try again.")
+      }
     } finally {
       setLoading(false)
     }

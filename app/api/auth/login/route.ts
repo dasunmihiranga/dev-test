@@ -1,34 +1,57 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { email, password } = body
 
-    // Proxy to Laravel backend
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    })
+    // This is a mock implementation for development
+    // In production, this would proxy to your Laravel backend
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      return NextResponse.json(data, { status: response.status })
+    // Mock validation
+    if (!email || !password) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Email and password are required",
+          errors: {
+            email: !email ? ["Email is required"] : [],
+            password: !password ? ["Password is required"] : [],
+          },
+        },
+        { status: 422 },
+      )
     }
 
-    return NextResponse.json(data)
-  } catch (error) {
-    console.error("Login proxy error:", error)
+    // Mock authentication - replace with actual Laravel API call
+    if (email === "demo@example.com" && password === "password") {
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: 1,
+          name: "Demo User",
+          email: "demo@example.com",
+          balance: 1250.75,
+        },
+        token: "mock-jwt-token-" + Date.now(),
+        message: "Login successful",
+      })
+    }
+
     return NextResponse.json(
-      { success: false, message: "Server error" }, 
-      { status: 500 }
+      {
+        success: false,
+        message: "Invalid credentials",
+      },
+      { status: 401 },
+    )
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Internal server error",
+      },
+      { status: 500 },
     )
   }
 }

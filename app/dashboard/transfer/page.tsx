@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, Loader2, CheckCircle, Search } from "lucide-react"
+import { Send, Loader2, CheckCircle, Search, User } from "lucide-react"
+import { apiClient } from "@/lib/api"
 
 interface TransferUser {
   id: number
@@ -27,6 +28,7 @@ export default function TransferPage() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
   const [recipient, setRecipient] = useState<TransferUser | null>(null)
+  const [transactionRef, setTransactionRef] = useState("")
 
   const handleSearchUser = async () => {
     if (!recipientEmail) return
@@ -36,12 +38,8 @@ export default function TransferPage() {
     setRecipient(null)
 
     try {
-      // Import the API client
-      const { apiClient } = await import("@/lib/api")
-      
-      // Search user using the real API
       const response = await apiClient.searchUser(recipientEmail)
-      
+
       if (response.success && response.user) {
         setRecipient({
           id: response.user.id,
@@ -81,19 +79,7 @@ export default function TransferPage() {
       return
     }
 
-    // Check if user has sufficient balance
-    const user = JSON.parse(localStorage.getItem("user") || "{}")
-    if (transferAmount > (user.balance || 0)) {
-      setError("Insufficient balance for this transfer")
-      setLoading(false)
-      return
-    }
-
     try {
-      // Import the API client
-      const { apiClient } = await import("@/lib/api")
-      
-      // Transfer funds using the real API
       const response = await apiClient.transferFunds({
         recipient_id: recipient.id,
         amount: transferAmount,
@@ -102,12 +88,13 @@ export default function TransferPage() {
 
       if (response.success) {
         setSuccess(true)
+        setTransactionRef(response.transaction.reference)
         setAmount("")
         setNote("")
         setRecipient(null)
         setRecipientEmail("")
 
-        // Update user balance in localStorage if provided in response
+        // Update user balance in localStorage
         if (response.new_balance !== undefined) {
           const user = JSON.parse(localStorage.getItem("user") || "{}")
           user.balance = response.new_balance
@@ -119,6 +106,10 @@ export default function TransferPage() {
     } catch (err: any) {
       if (err.status === 400) {
         setError(err.message || "Insufficient balance for this transfer")
+      } else if (err.status === 422 && err.errors) {
+        // Handle validation errors
+        const firstError = Object.values(err.errors)[0] as string[]
+        setError(firstError[0] || "Validation failed")
       } else {
         setError(err.message || "Network error. Please try again.")
       }
@@ -147,7 +138,12 @@ export default function TransferPage() {
             <Alert className="mb-6 border-green-200 bg-green-50">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
-                Transfer successful! ${amount} has been sent to {recipient?.name}.
+                Transfer successful! ${Number.parseFloat(amount || "0").toFixed(2)} has been sent to {recipient?.name}.
+                {transactionRef && (
+                  <div className="mt-1 text-sm">
+                    Transaction Reference: <span className="font-mono">{transactionRef}</span>
+                  </div>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -190,7 +186,7 @@ export default function TransferPage() {
                     <Avatar>
                       <AvatarImage src={recipient.avatar || "/placeholder.svg"} alt={recipient.name} />
                       <AvatarFallback>
-                        <Search className="h-4 w-4" />
+                        <User className="h-4 w-4" />
                       </AvatarFallback>
                     </Avatar>
                     <div>
@@ -214,7 +210,7 @@ export default function TransferPage() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="pl-8"
-                  min="0"
+                  min="0.01"
                   step="0.01"
                   required
                 />

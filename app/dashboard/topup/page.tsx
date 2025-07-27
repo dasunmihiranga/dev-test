@@ -10,13 +10,15 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { CreditCard, Loader2, CheckCircle } from "lucide-react"
+import { apiClient } from "@/lib/api"
 
 export default function TopUpPage() {
   const [amount, setAmount] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState("card")
+  const [paymentMethod, setPaymentMethod] = useState("credit_card")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
+  const [transactionRef, setTransactionRef] = useState("")
 
   const quickAmounts = [50, 100, 200, 500]
 
@@ -33,10 +35,6 @@ export default function TopUpPage() {
     }
 
     try {
-      // Import the API client
-      const { apiClient } = await import("@/lib/api")
-      
-      // Top up using the real API
       const response = await apiClient.topUp({
         amount: Number.parseFloat(amount),
         payment_method: paymentMethod,
@@ -44,9 +42,10 @@ export default function TopUpPage() {
 
       if (response.success) {
         setSuccess(true)
+        setTransactionRef(response.transaction.reference)
         setAmount("")
-        
-        // Update user balance in localStorage if provided in response
+
+        // Update user balance in localStorage
         if (response.new_balance !== undefined) {
           const user = JSON.parse(localStorage.getItem("user") || "{}")
           user.balance = response.new_balance
@@ -56,7 +55,13 @@ export default function TopUpPage() {
         setError(response.message || "Top-up failed")
       }
     } catch (err: any) {
-      setError(err.message || "Network error. Please try again.")
+      if (err.status === 422 && err.errors) {
+        // Handle validation errors
+        const firstError = Object.values(err.errors)[0] as string[]
+        setError(firstError[0] || "Validation failed")
+      } else {
+        setError(err.message || "Network error. Please try again.")
+      }
     } finally {
       setLoading(false)
     }
@@ -86,7 +91,12 @@ export default function TopUpPage() {
             <Alert className="mb-6 border-green-200 bg-green-50">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
-                Top-up successful! Your account has been credited with ${amount}.
+                Top-up successful! Your account has been credited with ${Number.parseFloat(amount || "0").toFixed(2)}.
+                {transactionRef && (
+                  <div className="mt-1 text-sm">
+                    Transaction Reference: <span className="font-mono">{transactionRef}</span>
+                  </div>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -128,7 +138,7 @@ export default function TopUpPage() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="pl-8"
-                  min="0"
+                  min="1"
                   step="0.01"
                   required
                 />
@@ -140,12 +150,12 @@ export default function TopUpPage() {
               <Label>Payment Method</Label>
               <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="card" id="card" />
-                  <Label htmlFor="card">Credit/Debit Card</Label>
+                  <RadioGroupItem value="credit_card" id="credit_card" />
+                  <Label htmlFor="credit_card">Credit/Debit Card</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="bank" id="bank" />
-                  <Label htmlFor="bank">Bank Transfer</Label>
+                  <RadioGroupItem value="bank_transfer" id="bank_transfer" />
+                  <Label htmlFor="bank_transfer">Bank Transfer</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="paypal" id="paypal" />
@@ -162,7 +172,7 @@ export default function TopUpPage() {
                     <strong>Note:</strong> This is a simulation. No actual payment will be processed.
                   </p>
                   <p>
-                    Selected Method: <span className="capitalize font-medium">{paymentMethod}</span>
+                    Selected Method: <span className="capitalize font-medium">{paymentMethod.replace("_", " ")}</span>
                   </p>
                   {amount && (
                     <p>

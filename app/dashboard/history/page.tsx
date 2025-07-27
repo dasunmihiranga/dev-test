@@ -6,7 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { History, ArrowUpRight, ArrowDownRight, Receipt, CreditCard, Search, Filter, Download } from "lucide-react"
+import {
+  History,
+  ArrowUpRight,
+  ArrowDownRight,
+  Receipt,
+  CreditCard,
+  Search,
+  Filter,
+  Download,
+  RefreshCw,
+} from "lucide-react"
+import { apiClient } from "@/lib/api"
 
 interface Transaction {
   id: number
@@ -18,11 +29,24 @@ interface Transaction {
   recipient?: string
   biller?: string
   reference?: string
+  note?: string
+}
+
+interface Pagination {
+  total: number
+  limit: number
+  offset: number
+  has_more: boolean
 }
 
 export default function HistoryPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([])
+  const [pagination, setPagination] = useState<Pagination>({
+    total: 0,
+    limit: 20,
+    offset: 0,
+    has_more: false,
+  })
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
@@ -30,72 +54,33 @@ export default function HistoryPage() {
 
   useEffect(() => {
     fetchTransactions()
-  }, [])
-
-  useEffect(() => {
-    filterTransactions()
-  }, [transactions, searchTerm, typeFilter, statusFilter])
+  }, [searchTerm, typeFilter, statusFilter, pagination.offset])
 
   const fetchTransactions = async () => {
     try {
       setLoading(true)
-      
-      // Import the API client
-      const { apiClient } = await import("@/lib/api")
-      
-      // Fetch transaction history from Laravel backend
-      const response = await apiClient.getTransactionHistory()
-      
-      if (response.success && response.transactions) {
-        setTransactions(response.transactions)
+
+      const filters: any = {
+        limit: pagination.limit,
+        offset: pagination.offset,
+      }
+
+      if (searchTerm) filters.search = searchTerm
+      if (typeFilter !== "all") filters.type = typeFilter
+      if (statusFilter !== "all") filters.status = statusFilter
+
+      const response = await apiClient.getTransactionHistory(filters)
+
+      if (response.success) {
+        setTransactions(response.transactions || [])
+        if (response.pagination) {
+          setPagination(response.pagination)
+        }
       } else {
-        // Fallback to mock data if API fails
-        const mockTransactions: Transaction[] = [
-          {
-            id: 1,
-            type: "topup",
-            amount: 500.0,
-            description: "Account Top-up via Credit Card",
-            status: "completed",
-            created_at: "2024-01-15T10:30:00Z",
-            reference: "TXN001",
-          },
-          {
-            id: 2,
-            type: "bill_payment",
-            amount: -85.5,
-            description: "Electricity Bill Payment",
-            status: "completed",
-            created_at: "2024-01-14T14:20:00Z",
-            biller: "Electricity Company",
-            reference: "TXN002",
-          },
-          {
-            id: 3,
-            type: "transfer_sent",
-            amount: -100.0,
-            description: "Transfer to John Doe",
-            status: "completed",
-            created_at: "2024-01-13T09:15:00Z",
-            recipient: "John Doe",
-            reference: "TXN003",
-          },
-          {
-            id: 4,
-            type: "transfer_received",
-            amount: 75.0,
-            description: "Transfer from Jane Smith",
-            status: "completed",
-            created_at: "2024-01-12T16:45:00Z",
-            recipient: "Jane Smith",
-            reference: "TXN004",
-          },
-        ]
-        setTransactions(mockTransactions)
+        console.error("Failed to fetch transactions:", response.message)
       }
     } catch (error) {
       console.error("Error fetching transactions:", error)
-      
       // Fallback to mock data if API fails
       const mockTransactions: Transaction[] = [
         {
@@ -124,31 +109,13 @@ export default function HistoryPage() {
     }
   }
 
-  const filterTransactions = () => {
-    let filtered = transactions
+  const handleSearch = () => {
+    setPagination((prev) => ({ ...prev, offset: 0 }))
+    fetchTransactions()
+  }
 
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (transaction) =>
-          transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          transaction.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          transaction.recipient?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          transaction.biller?.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    }
-
-    // Filter by type
-    if (typeFilter !== "all") {
-      filtered = filtered.filter((transaction) => transaction.type === typeFilter)
-    }
-
-    // Filter by status
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((transaction) => transaction.status === statusFilter)
-    }
-
-    setFilteredTransactions(filtered)
+  const handleLoadMore = () => {
+    setPagination((prev) => ({ ...prev, offset: prev.offset + prev.limit }))
   }
 
   const getTransactionIcon = (type: string) => {
@@ -197,10 +164,9 @@ export default function HistoryPage() {
   }
 
   const exportTransactions = () => {
-    // Simulate CSV export
     const csvContent = [
       ["Date", "Type", "Description", "Amount", "Status", "Reference"].join(","),
-      ...filteredTransactions.map((t) =>
+      ...transactions.map((t) =>
         [
           formatDate(t.created_at),
           t.type.replace("_", " "),
@@ -216,13 +182,9 @@ export default function HistoryPage() {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = "transaction-history.csv"
+    a.download = `transaction-history-${new Date().toISOString().split("T")[0]}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
-  }
-
-  if (loading) {
-    return <div>Loading...</div>
   }
 
   return (
@@ -232,10 +194,16 @@ export default function HistoryPage() {
           <h1 className="text-3xl font-bold text-gray-900">Transaction History</h1>
           <p className="text-gray-600">View and manage your transaction history</p>
         </div>
-        <Button onClick={exportTransactions} variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
+        <div className="flex space-x-2">
+          <Button onClick={() => fetchTransactions()} variant="outline" size="sm">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+          <Button onClick={exportTransactions} variant="outline" size="sm">
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -247,7 +215,7 @@ export default function HistoryPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <div className="relative">
@@ -257,6 +225,7 @@ export default function HistoryPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
+                  onKeyPress={(e) => e.key === "Enter" && handleSearch()}
                 />
               </div>
             </div>
@@ -291,6 +260,13 @@ export default function HistoryPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Actions</label>
+              <Button onClick={handleSearch} className="w-full">
+                Apply Filters
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -300,48 +276,74 @@ export default function HistoryPage() {
         <CardHeader>
           <CardTitle>Transactions</CardTitle>
           <CardDescription>
-            Showing {filteredTransactions.length} of {transactions.length} transactions
+            Showing {transactions.length} of {pagination.total} transactions
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredTransactions.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No transactions found matching your criteria.</div>
-            ) : (
-              filteredTransactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex items-center space-x-4">
-                    {getTransactionIcon(transaction.type)}
-                    <div>
-                      <p className="font-medium">{transaction.description}</p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <p className="text-sm text-gray-500">{formatDate(transaction.created_at)}</p>
-                        {transaction.reference && (
-                          <>
-                            <span className="text-gray-300">•</span>
-                            <p className="text-sm text-gray-500">{transaction.reference}</p>
-                          </>
-                        )}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+              <span className="ml-2 text-gray-600">Loading transactions...</span>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {transactions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">No transactions found matching your criteria.</div>
+              ) : (
+                <>
+                  {transactions.map((transaction) => (
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex items-center space-x-4">
+                        {getTransactionIcon(transaction.type)}
+                        <div>
+                          <p className="font-medium">{transaction.description}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <p className="text-sm text-gray-500">{formatDate(transaction.created_at)}</p>
+                            {transaction.reference && (
+                              <>
+                                <span className="text-gray-300">•</span>
+                                <p className="text-sm text-gray-500 font-mono">{transaction.reference}</p>
+                              </>
+                            )}
+                          </div>
+                          {transaction.note && <p className="text-sm text-gray-400 mt-1">Note: {transaction.note}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        {getStatusBadge(transaction.status)}
+                        <div
+                          className={`font-semibold text-right ${
+                            transaction.amount > 0 ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          {formatAmount(transaction.amount)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    {getStatusBadge(transaction.status)}
-                    <div
-                      className={`font-semibold text-right ${
-                        transaction.amount > 0 ? "text-green-600" : "text-red-600"
-                      }`}
-                    >
-                      {formatAmount(transaction.amount)}
+                  ))}
+
+                  {/* Load More Button */}
+                  {pagination.has_more && (
+                    <div className="flex justify-center pt-4">
+                      <Button onClick={handleLoadMore} variant="outline" disabled={loading}>
+                        {loading ? (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            Loading...
+                          </>
+                        ) : (
+                          "Load More"
+                        )}
+                      </Button>
                     </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

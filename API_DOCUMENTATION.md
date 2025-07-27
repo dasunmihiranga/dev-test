@@ -19,20 +19,20 @@ The Digital Wallet API provides endpoints for user authentication, account manag
 ## Base Configuration
 
 ### Environment Variables
-```env
+\`\`\`env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
-```
+\`\`\`
 
 ### Base URL
-```
+\`\`\`
 http://localhost:8000/api
-```
+\`\`\`
 
 ### Authentication
 All authenticated endpoints require a Bearer token in the Authorization header:
-```
+\`\`\`
 Authorization: Bearer {your_jwt_token}
-```
+\`\`\`
 
 ## Authentication
 
@@ -41,24 +41,24 @@ Authorization: Bearer {your_jwt_token}
 **Endpoint:** `POST /api/auth/register`
 
 **Headers:**
-```json
+\`\`\`json
 {
   "Content-Type": "application/json"
 }
-```
+\`\`\`
 
 **Request Body:**
-```json
+\`\`\`json
 {
   "name": "John Doe",
   "email": "john@example.com",
   "password": "password123",
   "password_confirmation": "password123"
 }
-```
+\`\`\`
 
 **Response (Success - 201):**
-```json
+\`\`\`json
 {
   "success": true,
   "user": {
@@ -70,29 +70,29 @@ Authorization: Bearer {your_jwt_token}
   "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
   "message": "Registration successful"
 }
-```
+\`\`\`
 
 ### Login User
 
 **Endpoint:** `POST /api/auth/login`
 
 **Headers:**
-```json
+\`\`\`json
 {
   "Content-Type": "application/json"
 }
-```
+\`\`\`
 
 **Request Body:**
-```json
+\`\`\`json
 {
   "email": "john@example.com",
   "password": "password123"
 }
-```
+\`\`\`
 
 **Response (Success - 200):**
-```json
+\`\`\`json
 {
   "success": true,
   "user": {
@@ -104,27 +104,27 @@ Authorization: Bearer {your_jwt_token}
   "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
   "message": "Login successful"
 }
-```
+\`\`\`
 
 ### Logout User
 
 **Endpoint:** `POST /api/auth/logout`
 
 **Headers:**
-```json
+\`\`\`json
 {
   "Authorization": "Bearer {token}",
   "Content-Type": "application/json"
 }
-```
+\`\`\`
 
 **Response (Success - 200):**
-```json
+\`\`\`json
 {
   "success": true,
   "message": "Logout successful"
 }
-```
+\`\`\`
 
 ## User Management
 
@@ -133,14 +133,14 @@ Authorization: Bearer {your_jwt_token}
 **Endpoint:** `GET /api/user/profile`
 
 **Headers:**
-```json
+\`\`\`json
 {
   "Authorization": "Bearer {token}"
 }
-```
+\`\`\`
 
 **Response (Success - 200):**
-```json
+\`\`\`json
 {
   "success": true,
   "user": {
@@ -152,29 +152,29 @@ Authorization: Bearer {your_jwt_token}
     "updated_at": "2025-01-20T14:45:00Z"
   }
 }
-```
+\`\`\`
 
 ### Search User by Email
 
 **Endpoint:** `GET /api/users/search?email={email}`
 
 **Headers:**
-```json
+\`\`\`json
 {
   "Authorization": "Bearer {token}"
 }
-```
+\`\`\`
 
 **Query Parameters:**
 - `email` (required): Email address to search for
 
 **Example Request:**
-```
+\`\`\`
 GET /api/users/search?email=jane@example.com
-```
+\`\`\`
 
 **Response (Success - 200):**
-```json
+\`\`\`json
 {
   "success": true,
   "user": {
@@ -183,15 +183,15 @@ GET /api/users/search?email=jane@example.com
     "email": "jane@example.com"
   }
 }
-```
+\`\`\`
 
 **Response (Not Found - 404):**
-```json
+\`\`\`json
 {
   "success": false,
   "message": "User not found"
 }
-```
+\`\`\`
 
 ## Transactions
 
@@ -200,23 +200,23 @@ GET /api/users/search?email=jane@example.com
 **Endpoint:** `POST /api/topup`
 
 **Headers:**
-```json
+\`\`\`json
 {
   "Authorization": "Bearer {token}",
   "Content-Type": "application/json"
 }
-```
+\`\`\`
 
 **Request Body:**
-```json
+\`\`\`json
 {
   "amount": 100.00,
   "payment_method": "credit_card"
 }
-```
+\`\`\`
 
 **Response (Success - 200):**
-```json
+\`\`\`json
 {
   "success": true,
   "transaction": {
@@ -230,31 +230,31 @@ GET /api/users/search?email=jane@example.com
   "new_balance": 1350.75,
   "message": "Top-up successful"
 }
-```
+\`\`\`
 
 ### Bill Payment
 
 **Endpoint:** `POST /api/bills/pay`
 
 **Headers:**
-```json
+\`\`\`json
 {
   "Authorization": "Bearer {token}",
   "Content-Type": "application/json"
 }
-```
+\`\`\`
 
 **Request Body:**
-```json
+\`\`\`json
 {
   "biller_id": "electricity_board",
   "amount": 150.00,
   "account_number": "ACC123456789"
 }
-```
+\`\`\`
 
 **Response (Success - 200):**
-```json
+\`\`\`json
 {
   "success": true,
   "transaction": {
@@ -270,31 +270,31 @@ GET /api/users/search?email=jane@example.com
   "new_balance": 1200.75,
   "message": "Bill payment successful"
 }
-```
+\`\`\`
 
 ### Fund Transfer
 
 **Endpoint:** `POST /api/transfer`
 
 **Headers:**
-```json
+\`\`\`json
 {
   "Authorization": "Bearer {token}",
   "Content-Type": "application/json"
 }
-```
+\`\`\`
 
 **Request Body:**
-```json
+\`\`\`json
 {
   "recipient_id": 2,
   "amount": 50.00,
   "note": "Payment for lunch"
 }
-```
+\`\`\`
 
 **Response (Success - 200):**
-```json
+\`\`\`json
 {
   "success": true,
   "transaction": {
@@ -310,18 +310,18 @@ GET /api/users/search?email=jane@example.com
   "new_balance": 1150.75,
   "message": "Transfer successful"
 }
-```
+\`\`\`
 
 ### Get Transaction History
 
 **Endpoint:** `GET /api/transactions`
 
 **Headers:**
-```json
+\`\`\`json
 {
   "Authorization": "Bearer {token}"
 }
-```
+\`\`\`
 
 **Query Parameters (Optional):**
 - `type`: Filter by transaction type (`bill_payment`, `transfer_sent`, `transfer_received`, `topup`)
@@ -331,12 +331,12 @@ GET /api/users/search?email=jane@example.com
 - `offset`: Number of transactions to skip (default: 0)
 
 **Example Request:**
-```
+\`\`\`
 GET /api/transactions?type=transfer_sent&status=completed&limit=10
-```
+\`\`\`
 
 **Response (Success - 200):**
-```json
+\`\`\`json
 {
   "success": true,
   "transactions": [
@@ -370,21 +370,21 @@ GET /api/transactions?type=transfer_sent&status=completed&limit=10
     "has_more": true
   }
 }
-```
+\`\`\`
 
 ### Get Dashboard Statistics
 
 **Endpoint:** `GET /api/dashboard/stats`
 
 **Headers:**
-```json
+\`\`\`json
 {
   "Authorization": "Bearer {token}"
 }
-```
+\`\`\`
 
 **Response (Success - 200):**
-```json
+\`\`\`json
 {
   "success": true,
   "stats": {
@@ -419,7 +419,7 @@ GET /api/transactions?type=transfer_sent&status=completed&limit=10
     }
   }
 }
-```
+\`\`\`
 
 ## Error Handling
 
@@ -438,7 +438,7 @@ GET /api/transactions?type=transfer_sent&status=completed&limit=10
 
 All error responses follow this structure:
 
-```json
+\`\`\`json
 {
   "success": false,
   "message": "Error description",
@@ -448,12 +448,12 @@ All error responses follow this structure:
     ]
   }
 }
-```
+\`\`\`
 
 ### Common Error Examples
 
 **Validation Error (422):**
-```json
+\`\`\`json
 {
   "success": false,
   "message": "Validation failed",
@@ -466,31 +466,31 @@ All error responses follow this structure:
     ]
   }
 }
-```
+\`\`\`
 
 **Authentication Error (401):**
-```json
+\`\`\`json
 {
   "success": false,
   "message": "Invalid credentials"
 }
-```
+\`\`\`
 
 **Authorization Error (401):**
-```json
+\`\`\`json
 {
   "success": false,
   "message": "Token expired or invalid"
 }
-```
+\`\`\`
 
 **Insufficient Balance Error (400):**
-```json
+\`\`\`json
 {
   "success": false,
   "message": "Insufficient balance for this transaction"
 }
-```
+\`\`\`
 
 ## Development Setup
 
@@ -518,7 +518,7 @@ The project includes an API client class located at `/lib/api.ts` with the follo
 
 ### Usage Example
 
-```typescript
+\`\`\`typescript
 import { ApiClient } from '@/lib/api';
 
 const api = new ApiClient();
@@ -535,21 +535,21 @@ const transferResult = await api.transferFunds({
   amount: 100.00,
   note: 'Payment for services'
 });
-```
+\`\`\`
 
 ### Environment Configuration
 
 Create a `.env.local` file in your project root:
 
-```env
+\`\`\`env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
-```
+\`\`\`
 
 For production, update the API URL accordingly:
 
-```env
+\`\`\`env
 NEXT_PUBLIC_API_URL=https://your-api-domain.com/api
-```
+\`\`\`
 
 ---
 
