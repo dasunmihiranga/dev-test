@@ -36,32 +36,26 @@ export default function TransferPage() {
     setRecipient(null)
 
     try {
-      // Simulate API call to search for user
-      const response = await fetch(`/api/users/search?email=${encodeURIComponent(recipientEmail)}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      })
-
-      if (response.ok) {
-        const userData = await response.json()
-        setRecipient(userData)
-      } else if (response.status === 404) {
-        setError("User not found with this email address")
-      } else {
-        setError("Error searching for user")
-      }
-    } catch (err) {
-      // Simulate finding a user for demo purposes
-      if (recipientEmail.includes("@")) {
+      // Import the API client
+      const { apiClient } = await import("@/lib/api")
+      
+      // Search user using the real API
+      const response = await apiClient.searchUser(recipientEmail)
+      
+      if (response.success && response.user) {
         setRecipient({
-          id: 2,
-          name: "John Doe",
-          email: recipientEmail,
-          avatar: "/placeholder.svg?height=40&width=40",
+          id: response.user.id,
+          name: response.user.name,
+          email: response.user.email,
         })
       } else {
-        setError("Please enter a valid email address")
+        setError("User not found with this email address")
+      }
+    } catch (err: any) {
+      if (err.status === 404) {
+        setError("User not found with this email address")
+      } else {
+        setError(err.message || "Error searching for user")
       }
     } finally {
       setSearchLoading(false)
@@ -96,36 +90,38 @@ export default function TransferPage() {
     }
 
     try {
-      // Simulate API call to Laravel backend
-      const response = await fetch("/api/transfer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          recipient_id: recipient.id,
-          amount: transferAmount,
-          note: note,
-        }),
+      // Import the API client
+      const { apiClient } = await import("@/lib/api")
+      
+      // Transfer funds using the real API
+      const response = await apiClient.transferFunds({
+        recipient_id: recipient.id,
+        amount: transferAmount,
+        note: note,
       })
 
-      if (response.ok) {
+      if (response.success) {
         setSuccess(true)
         setAmount("")
         setNote("")
         setRecipient(null)
         setRecipientEmail("")
 
-        // Update user balance in localStorage
-        user.balance = (user.balance || 0) - transferAmount
-        localStorage.setItem("user", JSON.stringify(user))
+        // Update user balance in localStorage if provided in response
+        if (response.new_balance !== undefined) {
+          const user = JSON.parse(localStorage.getItem("user") || "{}")
+          user.balance = response.new_balance
+          localStorage.setItem("user", JSON.stringify(user))
+        }
       } else {
-        const errorData = await response.json()
-        setError(errorData.message || "Transfer failed")
+        setError(response.message || "Transfer failed")
       }
-    } catch (err) {
-      setError("Network error. Please try again.")
+    } catch (err: any) {
+      if (err.status === 400) {
+        setError(err.message || "Insufficient balance for this transfer")
+      } else {
+        setError(err.message || "Network error. Please try again.")
+      }
     } finally {
       setLoading(false)
     }
