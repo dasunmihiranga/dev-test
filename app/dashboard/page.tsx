@@ -30,7 +30,30 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      // Simulate API calls
+      // Import the API client
+      const { apiClient } = await import("@/lib/api")
+      
+      // Fetch real dashboard stats from Laravel backend
+      const statsResponse = await apiClient.getDashboardStats()
+      
+      if (statsResponse.success) {
+        setStats({
+          totalBalance: statsResponse.stats.current_balance,
+          monthlySpent: statsResponse.stats.monthly_spending.current_month,
+          totalTransactions: statsResponse.stats.recent_transactions_count,
+          pendingBills: statsResponse.stats.pending_transactions_count,
+        })
+      }
+
+      // Fetch recent transactions
+      const transactionsResponse = await apiClient.getTransactionHistory({ limit: 5 })
+      
+      if (transactionsResponse.success) {
+        setRecentTransactions(transactionsResponse.transactions || [])
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error)
+      // Fallback to mock data if API fails
       const mockTransactions: Transaction[] = [
         {
           id: 1,
@@ -62,8 +85,6 @@ export default function DashboardPage() {
         totalTransactions: 24,
         pendingBills: 3,
       })
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error)
     }
   }
 
