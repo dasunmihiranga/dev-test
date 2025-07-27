@@ -1,23 +1,26 @@
-# Laravel + Next.js Digital Wallet Frontend
+# Digital Wallet Frontend
 
-This is the frontend part of a digital wallet application built with Next.js, designed to work with a Laravel backend API.
+A modern Next.js frontend for the Digital Wallet Laravel backend application. This application provides a complete digital wallet solution with user authentication, fund transfers, bill payments, and transaction management.
 
 ## Features
 
-- **User Authentication**: Register and login functionality
-- **Account Top-up**: Add funds to user accounts with multiple payment methods
-- **Bill Payments**: Pay various bills (Electricity, Water, Internet, etc.)
-- **Fund Transfer**: Send money to other registered users
-- **Transaction History**: View and filter all transactions
-- **Responsive Design**: Works on desktop and mobile devices
+- 🔐 **User Authentication** - Secure login/registration with JWT tokens
+- 💰 **Account Management** - View balance and account details
+- 💸 **Fund Transfers** - Send money to other users by email
+- 🧾 **Bill Payments** - Pay bills to registered billers
+- 📊 **Dashboard** - Overview of account statistics and recent transactions
+- 📱 **Transaction History** - Complete transaction history with filtering
+- 🔄 **Account Top-up** - Add funds via multiple payment methods
+- 📱 **Responsive Design** - Works on desktop, tablet, and mobile devices
 
 ## Tech Stack
 
-- **Next.js 14** with App Router
-- **TypeScript** for type safety
-- **Tailwind CSS** for styling
-- **shadcn/ui** for UI components
-- **Lucide React** for icons
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: Shadcn/ui
+- **Backend**: Laravel API (separate repository)
+- **Authentication**: JWT tokens via Laravel Sanctum
 
 ## Getting Started
 
