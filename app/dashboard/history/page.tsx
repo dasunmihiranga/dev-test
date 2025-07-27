@@ -38,7 +38,65 @@ export default function HistoryPage() {
 
   const fetchTransactions = async () => {
     try {
-      // Simulate API call to fetch transaction history
+      setLoading(true)
+      
+      // Import the API client
+      const { apiClient } = await import("@/lib/api")
+      
+      // Fetch transaction history from Laravel backend
+      const response = await apiClient.getTransactionHistory()
+      
+      if (response.success && response.transactions) {
+        setTransactions(response.transactions)
+      } else {
+        // Fallback to mock data if API fails
+        const mockTransactions: Transaction[] = [
+          {
+            id: 1,
+            type: "topup",
+            amount: 500.0,
+            description: "Account Top-up via Credit Card",
+            status: "completed",
+            created_at: "2024-01-15T10:30:00Z",
+            reference: "TXN001",
+          },
+          {
+            id: 2,
+            type: "bill_payment",
+            amount: -85.5,
+            description: "Electricity Bill Payment",
+            status: "completed",
+            created_at: "2024-01-14T14:20:00Z",
+            biller: "Electricity Company",
+            reference: "TXN002",
+          },
+          {
+            id: 3,
+            type: "transfer_sent",
+            amount: -100.0,
+            description: "Transfer to John Doe",
+            status: "completed",
+            created_at: "2024-01-13T09:15:00Z",
+            recipient: "John Doe",
+            reference: "TXN003",
+          },
+          {
+            id: 4,
+            type: "transfer_received",
+            amount: 75.0,
+            description: "Transfer from Jane Smith",
+            status: "completed",
+            created_at: "2024-01-12T16:45:00Z",
+            recipient: "Jane Smith",
+            reference: "TXN004",
+          },
+        ]
+        setTransactions(mockTransactions)
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error)
+      
+      // Fallback to mock data if API fails
       const mockTransactions: Transaction[] = [
         {
           id: 1,
@@ -59,60 +117,8 @@ export default function HistoryPage() {
           biller: "Electricity Company",
           reference: "TXN002",
         },
-        {
-          id: 3,
-          type: "transfer_sent",
-          amount: -100.0,
-          description: "Transfer to John Doe",
-          status: "completed",
-          created_at: "2024-01-13T09:15:00Z",
-          recipient: "John Doe",
-          reference: "TXN003",
-        },
-        {
-          id: 4,
-          type: "transfer_received",
-          amount: 75.0,
-          description: "Transfer from Jane Smith",
-          status: "completed",
-          created_at: "2024-01-12T16:45:00Z",
-          recipient: "Jane Smith",
-          reference: "TXN004",
-        },
-        {
-          id: 5,
-          type: "bill_payment",
-          amount: -45.0,
-          description: "Internet Bill Payment",
-          status: "completed",
-          created_at: "2024-01-11T11:30:00Z",
-          biller: "Internet Provider",
-          reference: "TXN005",
-        },
-        {
-          id: 6,
-          type: "topup",
-          amount: 200.0,
-          description: "Account Top-up via Bank Transfer",
-          status: "pending",
-          created_at: "2024-01-10T08:20:00Z",
-          reference: "TXN006",
-        },
-        {
-          id: 7,
-          type: "transfer_sent",
-          amount: -50.0,
-          description: "Transfer to Mike Johnson",
-          status: "failed",
-          created_at: "2024-01-09T13:10:00Z",
-          recipient: "Mike Johnson",
-          reference: "TXN007",
-        },
       ]
-
       setTransactions(mockTransactions)
-    } catch (error) {
-      console.error("Error fetching transactions:", error)
     } finally {
       setLoading(false)
     }
