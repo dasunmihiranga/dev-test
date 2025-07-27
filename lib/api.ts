@@ -7,6 +7,7 @@ class ApiClient {
     const token = localStorage.getItem("token")
     return {
       "Content-Type": "application/json",
+      "Accept": "application/json",
       ...(token && { Authorization: `Bearer ${token}` }),
     }
   }
@@ -20,12 +21,26 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config)
+      const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        // Handle Laravel validation errors
+        if (response.status === 422 && data.errors) {
+          throw {
+            status: response.status,
+            message: data.message || "Validation failed",
+            errors: data.errors,
+            success: false
+          }
+        }
+        throw {
+          status: response.status,
+          message: data.message || `HTTP error! status: ${response.status}`,
+          success: false
+        }
       }
 
-      return await response.json()
+      return data
     } catch (error) {
       console.error("API request failed:", error)
       throw error
@@ -48,9 +63,16 @@ class ApiClient {
   }
 
   async logout() {
-    return this.request("/auth/logout", {
+    const result = await this.request("/auth/logout", {
       method: "POST",
     })
+    // Clear token from localStorage on successful logout
+    localStorage.removeItem("token")
+    return result
+  }
+
+  async getCurrentUser() {
+    return this.request("/auth/user")
   }
 
   // User endpoints
@@ -62,6 +84,11 @@ class ApiClient {
     return this.request(`/users/search?email=${encodeURIComponent(email)}`)
   }
 
+  // Wallet endpoints
+  async getBalance() {
+    return this.request("/wallet/balance")
+  }
+
   // Transaction endpoints
   async topUp(data: { amount: number; payment_method: string }) {
     return this.request("/topup", {
@@ -70,7 +97,7 @@ class ApiClient {
     })
   }
 
-  async payBill(data: { biller_id: string; amount: number; account_number: string }) {
+  async payBill(data: { biller_id: number; amount: number; account_number: string }) {
     return this.request("/bills/pay", {
       method: "POST",
       body: JSON.stringify(data),
@@ -84,18 +111,49 @@ class ApiClient {
     })
   }
 
-  async getTransactionHistory(filters?: { type?: string; status?: string; search?: string }) {
+  async getTransactionHistory(filters?: { 
+    type?: string; 
+    status?: string; 
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }) {
     const params = new URLSearchParams()
     if (filters?.type) params.append("type", filters.type)
     if (filters?.status) params.append("status", filters.status)
     if (filters?.search) params.append("search", filters.search)
+    if (filters?.limit) params.append("limit", filters.limit.toString())
+    if (filters?.offset) params.append("offset", filters.offset.toString())
 
     const queryString = params.toString()
     return this.request(`/transactions${queryString ? `?${queryString}` : ""}`)
   }
 
+  async getTransaction(id: number) {
+    return this.request(`/transactions/${id}`)
+  }
+
+  async getTransactionStats() {
+    return this.request("/transactions/stats")
+  }
+
+  // Bill payment endpoints
+  async getBillers() {
+    return this.request("/billers")
+  }
+
+  // Dashboard endpoints
   async getDashboardStats() {
     return this.request("/dashboard/stats")
+  }
+
+  // Activity endpoints
+  async getActivities(page: number = 1) {
+    return this.request(`/activities?page=${page}`)
+  }
+
+  async getActivity(id: number) {
+    return this.request(`/activities/${id}`)
   }
 }
 
