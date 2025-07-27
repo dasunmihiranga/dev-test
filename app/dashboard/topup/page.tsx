@@ -33,32 +33,30 @@ export default function TopUpPage() {
     }
 
     try {
-      // Simulate API call to Laravel backend
-      const response = await fetch("/api/topup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          amount: Number.parseFloat(amount),
-          payment_method: paymentMethod,
-        }),
+      // Import the API client
+      const { apiClient } = await import("@/lib/api")
+      
+      // Top up using the real API
+      const response = await apiClient.topUp({
+        amount: Number.parseFloat(amount),
+        payment_method: paymentMethod,
       })
 
-      if (response.ok) {
+      if (response.success) {
         setSuccess(true)
         setAmount("")
-        // Update user balance in localStorage
-        const user = JSON.parse(localStorage.getItem("user") || "{}")
-        user.balance = (user.balance || 0) + Number.parseFloat(amount)
-        localStorage.setItem("user", JSON.stringify(user))
+        
+        // Update user balance in localStorage if provided in response
+        if (response.new_balance !== undefined) {
+          const user = JSON.parse(localStorage.getItem("user") || "{}")
+          user.balance = response.new_balance
+          localStorage.setItem("user", JSON.stringify(user))
+        }
       } else {
-        const errorData = await response.json()
-        setError(errorData.message || "Top-up failed")
+        setError(response.message || "Top-up failed")
       }
-    } catch (err) {
-      setError("Network error. Please try again.")
+    } catch (err: any) {
+      setError(err.message || "Network error. Please try again.")
     } finally {
       setLoading(false)
     }
