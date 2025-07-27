@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { UserAvatar } from "@/components/ui/user-avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +34,7 @@ interface DashboardUser {
   name: string
   email: string
   balance: number
+  avatar?: string
 }
 
 export default function DashboardLayout({
@@ -189,10 +190,7 @@ export default function DashboardLayout({
         {/* User Profile Section */}
         <div className="p-4 border-t border-gray-200 flex-shrink-0">
           <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src="/placeholder.svg" alt={user.name} />
-              <AvatarFallback className="bg-blue-100 text-blue-700">{user.name.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
+            <UserAvatar user={user} size="lg" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
               <p className="text-xs text-gray-500 truncate">{user.email}</p>
@@ -234,12 +232,7 @@ export default function DashboardLayout({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-gray-100">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src="/placeholder.svg" alt={user.name} />
-                      <AvatarFallback className="bg-blue-100 text-blue-700">
-                        {user.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar user={user} size="lg" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-64" align="end" forceMount>
