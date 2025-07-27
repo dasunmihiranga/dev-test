@@ -4,19 +4,9 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  History,
-  ArrowUpRight,
-  ArrowDownRight,
-  Receipt,
-  CreditCard,
-  Search,
-  Filter,
-  Download,
-  RefreshCw,
-} from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { ArrowUpRight, ArrowDownRight, Receipt, Search, Filter, Download, Calendar, Activity } from "lucide-react"
 import { apiClient } from "@/lib/api"
 
 interface Transaction {
@@ -25,72 +15,68 @@ interface Transaction {
   amount: number
   description: string
   status: "completed" | "pending" | "failed"
-  created_at: string
+  reference?: string
   recipient?: string
   biller?: string
-  reference?: string
-  note?: string
-}
-
-interface Pagination {
-  total: number
-  limit: number
-  offset: number
-  has_more: boolean
+  created_at: string
 }
 
 export default function HistoryPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [pagination, setPagination] = useState<Pagination>({
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [typeFilter, setTypeFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [pagination, setPagination] = useState({
     total: 0,
     limit: 20,
     offset: 0,
     has_more: false,
   })
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [typeFilter, setTypeFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
 
   useEffect(() => {
     fetchTransactions()
-  }, [searchTerm, typeFilter, statusFilter, pagination.offset])
+  }, [typeFilter, statusFilter, searchTerm])
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (offset = 0) => {
     try {
       setLoading(true)
-
-      const filters: any = {
+      const response = await apiClient.getTransactionHistory({
+        type: typeFilter === "all" ? undefined : typeFilter,
+        status: statusFilter === "all" ? undefined : statusFilter,
+        search: searchTerm || undefined,
         limit: pagination.limit,
-        offset: pagination.offset,
-      }
-
-      if (searchTerm) filters.search = searchTerm
-      if (typeFilter !== "all") filters.type = typeFilter
-      if (statusFilter !== "all") filters.status = statusFilter
-
-      const response = await apiClient.getTransactionHistory(filters)
+        offset,
+      })
 
       if (response.success) {
-        setTransactions(response.transactions || [])
-        if (response.pagination) {
-          setPagination(response.pagination)
+        if (offset === 0) {
+          setTransactions(response.transactions || [])
+        } else {
+          setTransactions((prev) => [...prev, ...(response.transactions || [])])
         }
-      } else {
-        console.error("Failed to fetch transactions:", response.message)
+
+        setPagination(
+          response.pagination || {
+            total: response.transactions?.length || 0,
+            limit: pagination.limit,
+            offset,
+            has_more: false,
+          },
+        )
       }
     } catch (error) {
       console.error("Error fetching transactions:", error)
-      // Fallback to mock data if API fails
+      // Fallback to mock data
       const mockTransactions: Transaction[] = [
         {
           id: 1,
           type: "topup",
           amount: 500.0,
-          description: "Account Top-up via Credit Card",
+          description: "Account Top-up",
           status: "completed",
-          created_at: "2024-01-15T10:30:00Z",
           reference: "TXN001",
+          created_at: "2024-01-15T10:30:00Z",
         },
         {
           id: 2,
@@ -98,9 +84,19 @@ export default function HistoryPage() {
           amount: -85.5,
           description: "Electricity Bill Payment",
           status: "completed",
-          created_at: "2024-01-14T14:20:00Z",
-          biller: "Electricity Company",
           reference: "TXN002",
+          biller: "Electricity Company",
+          created_at: "2024-01-14T14:20:00Z",
+        },
+        {
+          id: 3,
+          type: "transfer_sent",
+          amount: -100.0,
+          description: "Transfer to John Doe",
+          status: "completed",
+          reference: "TXN003",
+          recipient: "John Doe",
+          created_at: "2024-01-13T09:15:00Z",
         },
       ]
       setTransactions(mockTransactions)
@@ -109,38 +105,33 @@ export default function HistoryPage() {
     }
   }
 
-  const handleSearch = () => {
-    setPagination((prev) => ({ ...prev, offset: 0 }))
-    fetchTransactions()
-  }
-
-  const handleLoadMore = () => {
-    setPagination((prev) => ({ ...prev, offset: prev.offset + prev.limit }))
+  const loadMore = () => {
+    fetchTransactions(pagination.offset + pagination.limit)
   }
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case "topup":
-        return <CreditCard className="h-5 w-5 text-green-600" />
+        return <ArrowUpRight className="h-4 w-4 text-green-600" />
       case "bill_payment":
-        return <Receipt className="h-5 w-5 text-red-600" />
+        return <Receipt className="h-4 w-4 text-orange-600" />
       case "transfer_sent":
-        return <ArrowDownRight className="h-5 w-5 text-red-600" />
+        return <ArrowDownRight className="h-4 w-4 text-red-600" />
       case "transfer_received":
-        return <ArrowUpRight className="h-5 w-5 text-green-600" />
+        return <ArrowUpRight className="h-4 w-4 text-green-600" />
       default:
-        return <History className="h-5 w-5" />
+        return <Activity className="h-4 w-4" />
     }
   }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return <Badge className="bg-green-100 text-green-800">Completed</Badge>
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>
       case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
       case "failed":
-        return <Badge className="bg-red-100 text-red-800">Failed</Badge>
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Failed</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
     }
@@ -152,195 +143,158 @@ export default function HistoryPage() {
     return isNegative ? `-$${formattedAmount}` : `+$${formattedAmount}`
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
-
-  const exportTransactions = () => {
-    const csvContent = [
-      ["Date", "Type", "Description", "Amount", "Status", "Reference"].join(","),
-      ...transactions.map((t) =>
-        [
-          formatDate(t.created_at),
-          t.type.replace("_", " "),
-          t.description,
-          t.amount.toFixed(2),
-          t.status,
-          t.reference || "",
-        ].join(","),
-      ),
-    ].join("\n")
-
-    const blob = new Blob([csvContent], { type: "text/csv" })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `transaction-history-${new Date().toISOString().split("T")[0]}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
+  const getTransactionTypeLabel = (type: string) => {
+    switch (type) {
+      case "topup":
+        return "Top-up"
+      case "bill_payment":
+        return "Bill Payment"
+      case "transfer_sent":
+        return "Transfer Sent"
+      case "transfer_received":
+        return "Transfer Received"
+      default:
+        return type
+    }
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Transaction History</h1>
-          <p className="text-gray-600">View and manage your transaction history</p>
+          <p className="text-gray-600 mt-2">View and manage your transaction history</p>
         </div>
-        <div className="flex space-x-2">
-          <Button onClick={() => fetchTransactions()} variant="outline" size="sm">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-          <Button onClick={exportTransactions} variant="outline" size="sm">
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
-        </div>
+        <Button variant="outline" className="mt-4 sm:mt-0 bg-transparent">
+          <Download className="h-4 w-4 mr-2" />
+          Export
+        </Button>
       </div>
 
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Filter className="h-5 w-5" />
-            <span>Filters</span>
+          <CardTitle className="flex items-center">
+            <Filter className="h-5 w-5 mr-2" />
+            Filters
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Search</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search transactions..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                  onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                />
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search transactions..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Type</label>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="topup">Top Up</SelectItem>
-                  <SelectItem value="bill_payment">Bill Payment</SelectItem>
-                  <SelectItem value="transfer_sent">Transfer Sent</SelectItem>
-                  <SelectItem value="transfer_received">Transfer Received</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Type Filter */}
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="topup">Top-up</SelectItem>
+                <SelectItem value="bill_payment">Bill Payment</SelectItem>
+                <SelectItem value="transfer_sent">Transfer Sent</SelectItem>
+                <SelectItem value="transfer_received">Transfer Received</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Actions</label>
-              <Button onClick={handleSearch} className="w-full">
-                Apply Filters
-              </Button>
-            </div>
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Transaction List */}
+      {/* Transactions List */}
       <Card>
         <CardHeader>
           <CardTitle>Transactions</CardTitle>
           <CardDescription>
-            Showing {transactions.length} of {pagination.total} transactions
+            {pagination.total > 0
+              ? `Showing ${transactions.length} of ${pagination.total} transactions`
+              : "No transactions found"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
-              <span className="ml-2 text-gray-600">Loading transactions...</span>
+          {loading && transactions.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading transactions...</p>
+              </div>
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="text-center py-12">
+              <Activity className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-500">No transactions found</p>
+              <p className="text-sm text-gray-400 mt-1">Try adjusting your filters or make your first transaction</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {transactions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No transactions found matching your criteria.</div>
-              ) : (
-                <>
-                  {transactions.map((transaction) => (
-                    <div
-                      key={transaction.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                    >
-                      <div className="flex items-center space-x-4">
-                        {getTransactionIcon(transaction.type)}
-                        <div>
-                          <p className="font-medium">{transaction.description}</p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <p className="text-sm text-gray-500">{formatDate(transaction.created_at)}</p>
-                            {transaction.reference && (
-                              <>
-                                <span className="text-gray-300">•</span>
-                                <p className="text-sm text-gray-500 font-mono">{transaction.reference}</p>
-                              </>
-                            )}
-                          </div>
-                          {transaction.note && <p className="text-sm text-gray-400 mt-1">Note: {transaction.note}</p>}
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
+              {transactions.map((transaction) => (
+                <div
+                  key={transaction.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="p-2 rounded-full bg-gray-100">{getTransactionIcon(transaction.type)}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <p className="font-medium text-gray-900">{transaction.description}</p>
                         {getStatusBadge(transaction.status)}
-                        <div
-                          className={`font-semibold text-right ${
-                            transaction.amount > 0 ? "text-green-600" : "text-red-600"
-                          }`}
-                        >
-                          {formatAmount(transaction.amount)}
-                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                        <span className="flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {new Date(transaction.created_at).toLocaleDateString()}
+                        </span>
+                        <span>{getTransactionTypeLabel(transaction.type)}</span>
+                        {transaction.reference && <span className="font-mono">{transaction.reference}</span>}
                       </div>
                     </div>
-                  ))}
-
-                  {/* Load More Button */}
-                  {pagination.has_more && (
-                    <div className="flex justify-center pt-4">
-                      <Button onClick={handleLoadMore} variant="outline" disabled={loading}>
-                        {loading ? (
-                          <>
-                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                            Loading...
-                          </>
-                        ) : (
-                          "Load More"
-                        )}
-                      </Button>
+                  </div>
+                  <div className="text-right">
+                    <div className={`font-semibold ${transaction.amount > 0 ? "text-green-600" : "text-red-600"}`}>
+                      {formatAmount(transaction.amount)}
                     </div>
-                  )}
-                </>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {new Date(transaction.created_at).toLocaleTimeString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Load More Button */}
+              {pagination.has_more && (
+                <div className="text-center pt-6">
+                  <Button onClick={loadMore} variant="outline" disabled={loading}>
+                    {loading ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                        Loading...
+                      </div>
+                    ) : (
+                      "Load More"
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
           )}

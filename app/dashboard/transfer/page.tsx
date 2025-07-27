@@ -7,258 +7,220 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, Loader2, CheckCircle, Search, User } from "lucide-react"
+import { Send, DollarSign, User, CheckCircle, AlertCircle, Search } from "lucide-react"
 import { apiClient } from "@/lib/api"
 
-interface TransferUser {
+interface SearchedUser {
   id: number
   name: string
   email: string
-  avatar?: string
 }
 
 export default function TransferPage() {
-  const [recipientEmail, setRecipientEmail] = useState("")
+  const [email, setEmail] = useState("")
   const [amount, setAmount] = useState("")
   const [note, setNote] = useState("")
+  const [recipient, setRecipient] = useState<SearchedUser | null>(null)
   const [loading, setLoading] = useState(false)
-  const [searchLoading, setSearchLoading] = useState(false)
+  const [searching, setSearching] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
-  const [recipient, setRecipient] = useState<TransferUser | null>(null)
-  const [transactionRef, setTransactionRef] = useState("")
 
   const handleSearchUser = async () => {
-    if (!recipientEmail) return
+    if (!email) return
 
-    setSearchLoading(true)
+    setSearching(true)
     setError("")
     setRecipient(null)
 
     try {
-      const response = await apiClient.searchUser(recipientEmail)
-
+      const response = await apiClient.searchUser(email)
       if (response.success && response.user) {
-        setRecipient({
-          id: response.user.id,
-          name: response.user.name,
-          email: response.user.email,
-        })
-      } else {
-        setError("User not found with this email address")
+        setRecipient(response.user)
       }
     } catch (err: any) {
-      if (err.status === 404) {
-        setError("User not found with this email address")
-      } else {
-        setError(err.message || "Error searching for user")
-      }
+      setError(err.message || "User not found")
     } finally {
-      setSearchLoading(false)
+      setSearching(false)
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!recipient) return
+
     setLoading(true)
     setError("")
     setSuccess(false)
 
-    if (!recipient || !amount) {
-      setError("Please search for a recipient and enter an amount")
-      setLoading(false)
-      return
-    }
-
-    const transferAmount = Number.parseFloat(amount)
-    if (transferAmount <= 0) {
-      setError("Please enter a valid amount")
-      setLoading(false)
-      return
-    }
-
     try {
       const response = await apiClient.transferFunds({
         recipient_id: recipient.id,
-        amount: transferAmount,
-        note: note,
+        amount: Number.parseFloat(amount),
+        note: note || undefined,
       })
 
       if (response.success) {
         setSuccess(true)
-        setTransactionRef(response.transaction.reference)
+        setEmail("")
         setAmount("")
         setNote("")
         setRecipient(null)
-        setRecipientEmail("")
 
         // Update user balance in localStorage
-        if (response.new_balance !== undefined) {
-          const user = JSON.parse(localStorage.getItem("user") || "{}")
-          user.balance = response.new_balance
-          localStorage.setItem("user", JSON.stringify(user))
-        }
-      } else {
-        setError(response.message || "Transfer failed")
+        const user = JSON.parse(localStorage.getItem("user") || "{}")
+        user.balance = response.new_balance
+        localStorage.setItem("user", JSON.stringify(user))
+
+        // Refresh the page after 2 seconds
+        setTimeout(() => {
+          window.location.reload()
+        }, 2000)
       }
     } catch (err: any) {
-      if (err.status === 400) {
-        setError(err.message || "Insufficient balance for this transfer")
-      } else if (err.status === 422 && err.errors) {
-        // Handle validation errors
-        const firstError = Object.values(err.errors)[0] as string[]
-        setError(firstError[0] || "Validation failed")
-      } else {
-        setError(err.message || "Network error. Please try again.")
-      }
+      setError(err.message || "Failed to process transfer")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
+    <div className="max-w-2xl mx-auto space-y-8">
+      <div className="text-center sm:text-left">
         <h1 className="text-3xl font-bold text-gray-900">Transfer Funds</h1>
-        <p className="text-gray-600">Send money to other registered users</p>
+        <p className="text-gray-600 mt-2">Send money to other users instantly</p>
       </div>
+
+      {success && (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            Transfer successful! Funds have been sent to the recipient.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Send className="h-5 w-5" />
-            <span>Send Money</span>
+          <CardTitle className="flex items-center">
+            <Send className="h-5 w-5 mr-2" />
+            Send Money
           </CardTitle>
-          <CardDescription>Enter the recipient's email address and transfer amount</CardDescription>
+          <CardDescription>Enter recipient details and transfer amount</CardDescription>
         </CardHeader>
-        <CardContent>
-          {success && (
-            <Alert className="mb-6 border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                Transfer successful! ${Number.parseFloat(amount || "0").toFixed(2)} has been sent to {recipient?.name}.
-                {transactionRef && (
-                  <div className="mt-1 text-sm">
-                    Transaction Reference: <span className="font-mono">{transactionRef}</span>
-                  </div>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {error && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Recipient Search */}
-            <div className="space-y-3">
-              <Label htmlFor="recipientEmail">Recipient Email</Label>
-              <div className="flex space-x-2">
-                <Input
-                  id="recipientEmail"
-                  type="email"
-                  placeholder="Enter recipient's email address"
-                  value={recipientEmail}
-                  onChange={(e) => setRecipientEmail(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSearchUser}
-                  disabled={searchLoading || !recipientEmail}
-                >
-                  {searchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-
-            {/* Recipient Display */}
-            {recipient && (
-              <Card className="bg-green-50 border-green-200">
-                <CardContent className="pt-4">
-                  <div className="flex items-center space-x-3">
-                    <Avatar>
-                      <AvatarImage src={recipient.avatar || "/placeholder.svg"} alt={recipient.name} />
-                      <AvatarFallback>
-                        <User className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-semibold text-green-800">{recipient.name}</p>
-                      <p className="text-sm text-green-600">{recipient.email}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Amount */}
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="pl-8"
-                  min="0.01"
-                  step="0.01"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Note */}
-            <div className="space-y-2">
-              <Label htmlFor="note">Note (Optional)</Label>
+        <CardContent className="space-y-6">
+          {/* Recipient Search */}
+          <div>
+            <Label htmlFor="email">Recipient Email</Label>
+            <div className="flex space-x-2 mt-1">
               <Input
-                id="note"
-                type="text"
-                placeholder="Add a note for this transfer"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                maxLength={100}
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter recipient's email"
+                className="flex-1"
               />
+              <Button type="button" onClick={handleSearchUser} disabled={!email || searching} variant="outline">
+                {searching ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
             </div>
+          </div>
 
-            {/* Transfer Summary */}
-            {recipient && amount && (
-              <Card className="bg-gray-50">
-                <CardContent className="pt-4">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Recipient:</span>
-                      <span className="font-medium">{recipient.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Amount:</span>
-                      <span className="font-medium">${Number.parseFloat(amount || "0").toFixed(2)}</span>
-                    </div>
-                    {note && (
-                      <div className="flex justify-between">
-                        <span>Note:</span>
-                        <span className="font-medium">{note}</span>
-                      </div>
-                    )}
+          {/* Recipient Display */}
+          {recipient && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-green-100 rounded-full">
+                  <User className="h-4 w-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-green-900">{recipient.name}</p>
+                  <p className="text-sm text-green-700">{recipient.email}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Transfer Form */}
+          {recipient && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Amount */}
+              <div>
+                <Label htmlFor="amount">Amount</Label>
+                <div className="relative mt-1">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max="10000"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="Enter amount"
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Note */}
+              <div>
+                <Label htmlFor="note">Note (Optional)</Label>
+                <Textarea
+                  id="note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Add a note for this transfer"
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+
+              {/* Submit Button */}
+              <Button type="submit" className="w-full h-12 text-base" disabled={loading || !amount}>
+                {loading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Processing...
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  `Send $${amount || "0.00"} to ${recipient.name}`
+                )}
+              </Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
 
-            <Button type="submit" className="w-full" disabled={loading || !recipient || !amount}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {loading ? "Processing..." : `Send $${Number.parseFloat(amount || "0").toFixed(2)}`}
-            </Button>
-          </form>
+      {/* Security Notice */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-6">
+          <div className="flex items-start space-x-3">
+            <div className="p-1 bg-blue-100 rounded-full">
+              <CheckCircle className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-blue-900">Instant Transfer</h3>
+              <p className="text-sm text-blue-800 mt-1">
+                Transfers are processed instantly and securely. The recipient will be notified immediately.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

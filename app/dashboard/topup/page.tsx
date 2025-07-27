@@ -7,32 +7,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { CreditCard, Loader2, CheckCircle } from "lucide-react"
+import { CreditCard, DollarSign, CheckCircle, AlertCircle } from "lucide-react"
 import { apiClient } from "@/lib/api"
 
 export default function TopUpPage() {
   const [amount, setAmount] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState("credit_card")
+  const [paymentMethod, setPaymentMethod] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
-  const [transactionRef, setTransactionRef] = useState("")
 
-  const quickAmounts = [50, 100, 200, 500]
+  const quickAmounts = [10, 25, 50, 100, 200, 500]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
     setSuccess(false)
-
-    if (!amount || Number.parseFloat(amount) <= 0) {
-      setError("Please enter a valid amount")
-      setLoading(false)
-      return
-    }
 
     try {
       const response = await apiClient.topUp({
@@ -42,83 +35,70 @@ export default function TopUpPage() {
 
       if (response.success) {
         setSuccess(true)
-        setTransactionRef(response.transaction.reference)
         setAmount("")
+        setPaymentMethod("")
 
         // Update user balance in localStorage
-        if (response.new_balance !== undefined) {
-          const user = JSON.parse(localStorage.getItem("user") || "{}")
-          user.balance = response.new_balance
-          localStorage.setItem("user", JSON.stringify(user))
-        }
-      } else {
-        setError(response.message || "Top-up failed")
+        const user = JSON.parse(localStorage.getItem("user") || "{}")
+        user.balance = response.new_balance
+        localStorage.setItem("user", JSON.stringify(user))
+
+        // Refresh the page after 2 seconds
+        setTimeout(() => {
+          window.location.reload()
+        }, 2000)
       }
     } catch (err: any) {
-      if (err.status === 422 && err.errors) {
-        // Handle validation errors
-        const firstError = Object.values(err.errors)[0] as string[]
-        setError(firstError[0] || "Validation failed")
-      } else {
-        setError(err.message || "Network error. Please try again.")
-      }
+      setError(err.message || "Failed to process top-up")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleQuickAmount = (quickAmount: number) => {
-    setAmount(quickAmount.toString())
-  }
-
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
+    <div className="max-w-2xl mx-auto space-y-8">
+      <div className="text-center sm:text-left">
         <h1 className="text-3xl font-bold text-gray-900">Top Up Account</h1>
-        <p className="text-gray-600">Add funds to your digital wallet</p>
+        <p className="text-gray-600 mt-2">Add funds to your digital wallet</p>
       </div>
+
+      {success && (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            Top-up successful! Your account has been credited.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <CreditCard className="h-5 w-5" />
-            <span>Add Funds</span>
+          <CardTitle className="flex items-center">
+            <CreditCard className="h-5 w-5 mr-2" />
+            Add Funds
           </CardTitle>
           <CardDescription>Choose an amount and payment method to top up your account</CardDescription>
         </CardHeader>
         <CardContent>
-          {success && (
-            <Alert className="mb-6 border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                Top-up successful! Your account has been credited with ${Number.parseFloat(amount || "0").toFixed(2)}.
-                {transactionRef && (
-                  <div className="mt-1 text-sm">
-                    Transaction Reference: <span className="font-mono">{transactionRef}</span>
-                  </div>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {error && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Quick Amount Selection */}
-            <div className="space-y-3">
-              <Label>Quick Select Amount</Label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <Label className="text-base font-medium">Quick Select</Label>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-2">
                 {quickAmounts.map((quickAmount) => (
                   <Button
                     key={quickAmount}
                     type="button"
-                    variant="outline"
-                    onClick={() => handleQuickAmount(quickAmount)}
-                    className={amount === quickAmount.toString() ? "border-blue-500 bg-blue-50" : ""}
+                    variant={amount === quickAmount.toString() ? "default" : "outline"}
+                    className="h-12"
+                    onClick={() => setAmount(quickAmount.toString())}
                   >
                     ${quickAmount}
                   </Button>
@@ -127,67 +107,71 @@ export default function TopUpPage() {
             </div>
 
             {/* Custom Amount */}
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="amount">Custom Amount</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+              <div className="relative mt-1">
+                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   id="amount"
                   type="number"
-                  placeholder="0.00"
+                  step="0.01"
+                  min="1"
+                  max="10000"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="pl-8"
-                  min="1"
-                  step="0.01"
+                  placeholder="Enter amount"
+                  className="pl-10"
                   required
                 />
               </div>
             </div>
 
             {/* Payment Method */}
-            <div className="space-y-3">
-              <Label>Payment Method</Label>
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="credit_card" id="credit_card" />
-                  <Label htmlFor="credit_card">Credit/Debit Card</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="bank_transfer" id="bank_transfer" />
-                  <Label htmlFor="bank_transfer">Bank Transfer</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="paypal" id="paypal" />
-                  <Label htmlFor="paypal">PayPal</Label>
-                </div>
-              </RadioGroup>
+            <div>
+              <Label htmlFor="payment-method">Payment Method</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod} required>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="credit_card">Credit Card</SelectItem>
+                  <SelectItem value="debit_card">Debit Card</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="paypal">PayPal</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Payment Details Simulation */}
-            <Card className="bg-gray-50">
-              <CardContent className="pt-6">
-                <div className="text-sm text-gray-600 space-y-2">
-                  <p>
-                    <strong>Note:</strong> This is a simulation. No actual payment will be processed.
-                  </p>
-                  <p>
-                    Selected Method: <span className="capitalize font-medium">{paymentMethod.replace("_", " ")}</span>
-                  </p>
-                  {amount && (
-                    <p>
-                      Amount: <span className="font-medium">${Number.parseFloat(amount || "0").toFixed(2)}</span>
-                    </p>
-                  )}
+            {/* Submit Button */}
+            <Button type="submit" className="w-full h-12 text-base" disabled={loading || !amount || !paymentMethod}>
+              {loading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Processing...
                 </div>
-              </CardContent>
-            </Card>
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {loading ? "Processing..." : `Top Up $${Number.parseFloat(amount || "0").toFixed(2)}`}
+              ) : (
+                `Top Up $${amount || "0.00"}`
+              )}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Security Notice */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-6">
+          <div className="flex items-start space-x-3">
+            <div className="p-1 bg-blue-100 rounded-full">
+              <CheckCircle className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-blue-900">Secure Transaction</h3>
+              <p className="text-sm text-blue-800 mt-1">
+                All transactions are encrypted and processed securely. Your payment information is never stored on our
+                servers.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

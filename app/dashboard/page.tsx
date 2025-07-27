@@ -4,7 +4,17 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { CreditCard, Receipt, Send, TrendingUp, ArrowUpRight, ArrowDownRight, Plus } from "lucide-react"
+import {
+  Receipt,
+  Send,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
+  Plus,
+  DollarSign,
+  Activity,
+  Clock,
+} from "lucide-react"
 import { apiClient } from "@/lib/api"
 
 interface Transaction {
@@ -150,9 +160,9 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading dashboard...</p>
         </div>
       </div>
@@ -160,19 +170,19 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Welcome Section */}
-      <div>
+      <div className="text-center sm:text-left">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Welcome back! Here's your account overview.</p>
+        <p className="text-gray-600 mt-2">Welcome back! Here's your account overview.</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Balance</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">${stats.current_balance.toFixed(2)}</div>
@@ -180,7 +190,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Monthly Spent</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -194,10 +204,10 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Transactions</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
+            <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.recent_transactions_count}</div>
@@ -205,10 +215,10 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Send className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.pending_transactions_count}</div>
@@ -218,26 +228,26 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <Card>
+      <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>Perform common tasks quickly</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button asChild className="h-20 flex-col space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Button asChild className="h-20 flex-col space-y-2 bg-blue-600 hover:bg-blue-700">
               <Link href="/dashboard/topup">
                 <Plus className="h-6 w-6" />
                 <span>Top Up Account</span>
               </Link>
             </Button>
-            <Button asChild variant="outline" className="h-20 flex-col space-y-2 bg-transparent">
+            <Button asChild variant="outline" className="h-20 flex-col space-y-2 hover:bg-gray-50 bg-transparent">
               <Link href="/dashboard/bills">
                 <Receipt className="h-6 w-6" />
                 <span>Pay Bills</span>
               </Link>
             </Button>
-            <Button asChild variant="outline" className="h-20 flex-col space-y-2 bg-transparent">
+            <Button asChild variant="outline" className="h-20 flex-col space-y-2 hover:bg-gray-50 bg-transparent">
               <Link href="/dashboard/transfer">
                 <Send className="h-6 w-6" />
                 <span>Transfer Funds</span>
@@ -249,9 +259,12 @@ export default function DashboardPage() {
 
       {/* Transaction Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
-            <CardTitle className="text-lg">Top-ups</CardTitle>
+            <CardTitle className="text-lg flex items-center">
+              <ArrowUpRight className="h-5 w-5 text-green-600 mr-2" />
+              Top-ups
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
@@ -261,20 +274,23 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
-            <CardTitle className="text-lg">Transfers</CardTitle>
+            <CardTitle className="text-lg flex items-center">
+              <Send className="h-5 w-5 text-blue-600 mr-2" />
+              Transfers
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm">Sent:</span>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Sent:</span>
                 <span className="text-sm font-medium text-red-600">
                   -${stats.transaction_summary.transfers.sent.total_amount.toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Received:</span>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Received:</span>
                 <span className="text-sm font-medium text-green-600">
                   +${stats.transaction_summary.transfers.received.total_amount.toFixed(2)}
                 </span>
@@ -283,12 +299,15 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
-            <CardTitle className="text-lg">Bills</CardTitle>
+            <CardTitle className="text-lg flex items-center">
+              <Receipt className="h-5 w-5 text-orange-600 mr-2" />
+              Bills
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-2xl font-bold text-orange-600">
               ${stats.transaction_summary.bills.total_amount.toFixed(2)}
             </div>
             <p className="text-sm text-muted-foreground">{stats.transaction_summary.bills.count} payments</p>
@@ -297,7 +316,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Transactions */}
-      <Card>
+      <Card className="hover:shadow-lg transition-shadow">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Recent Transactions</CardTitle>
@@ -310,20 +329,26 @@ export default function DashboardPage() {
         <CardContent>
           <div className="space-y-4">
             {recentTransactions.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">No recent transactions found.</div>
+              <div className="text-center py-8 text-gray-500">
+                <Activity className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+                <p>No recent transactions found.</p>
+              </div>
             ) : (
               recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div
+                  key={transaction.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                >
                   <div className="flex items-center space-x-3">
-                    {getTransactionIcon(transaction.type)}
+                    <div className="p-2 rounded-full bg-gray-100">{getTransactionIcon(transaction.type)}</div>
                     <div>
-                      <p className="font-medium">{transaction.description}</p>
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm text-gray-500">{new Date(transaction.created_at).toLocaleDateString()}</p>
+                      <p className="font-medium text-gray-900">{transaction.description}</p>
+                      <div className="flex items-center space-x-2 text-sm text-gray-500">
+                        <span>{new Date(transaction.created_at).toLocaleDateString()}</span>
                         {transaction.reference && (
                           <>
-                            <span className="text-gray-300">•</span>
-                            <p className="text-sm text-gray-500">{transaction.reference}</p>
+                            <span>•</span>
+                            <span>{transaction.reference}</span>
                           </>
                         )}
                       </div>
